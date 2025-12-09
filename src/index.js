@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import mainRoutes from './routes/main.routes.js';
 import morgan from 'morgan';
+import mongoose from 'mongoose';
 import { connectDB } from './db.js';
 
 const PORT = process.env.PORT || 3000;

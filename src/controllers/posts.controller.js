@@ -1,48 +1,92 @@
-let publicaciones = [
-    {id: 1, title: 'Primer Post', content: 'Este es el contenido del primer post'},
-    {id: 2, title: 'Segundo Post', content: 'Este es el contenido del segundo post'},
-    {id: 3, title: 'Tercer Post', content: 'Este es el contenido del tercer post'}
-];
+import postsModels from "../models/posts.models.js";
 
-export const getPosts = (req, res) => {
+//TODO: revisar si esta bien hecho
+
+export const getPosts = async (req, res) => {
+    try {
+        const publicaciones = await postsModels.find();
     res.json({
         status: 'success',
         message: 'Lista de publicaciones obtenida correctamente',
         data: publicaciones
     });
+    } catch (error) {
+        console.error("Error fetching posts:", error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Error al obtener la lista de publicaciones'
+        });
+    }
 };
 
-export const createPost = (req, res) => {
-    const body = req.body;
-
-    const nuevaPublicacion = {
+export const createPost = async (req, res) => {
+    try {
+    const { body } = req.body;
+    const nuevaPublicacion = await postsModels.create({
         id: publicaciones.length + 1,
         title: body.title,
         content: body.content
+    })
+    res.status(201).json(nuevaPublicacion);
+    } catch (error) {
+        console.error("Error creating post:", error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Error al crear la publicación'
+        });
     };
 
     publicaciones.push(nuevaPublicacion);
     res.status(201).json(nuevaPublicacion);
 }
 
-export const updatePost = (req, res) => {
+export const updatePost = async (req, res) => {
+    try {
     const { id } = req.params;
     
-    const publicacion = publicaciones.find(publicacion => publicacion.id === parseInt(id));
-
-    const { title, content } = req.body;
-
-    publicacion.title = title;
-    publicacion.content = content;
-
-    res.status(200).json(publicacion);
-}
-
-export const deletePost = (req, res) => {
-    const { id } = req.params;
-
+    const { body } = req.body;
     const publicacionIndex = publicaciones.findIndex(publicacion => publicacion.id === parseInt(id));
-    publicaciones.splice(publicacionIndex, 1);
+    publicaciones[publicacionIndex] = {
+        ...publicaciones[publicacionIndex],
+        title: body.title,
+        content: body.content
+    };
+    
+    if (publicacionIndex === -1) {
+        return res.status(404).json({
+            status: 'error',
+            message: 'Publicación no encontrada'
+        });
+    }
+
+    res.status(200).json({ message: "Publicación actualizada correctamente" });
+} catch (error) {
+    console.error("Error updating post:", error);
+    res.status(500).json({
+        status: 'error',
+        message: 'Error al actualizar la publicación'
+    });
+    }
+};
+
+export const deletePost = async (req, res) => {
+    try {
+    const { id } = req.params;
+    const publicacionEliminada = publicaciones.find(publicacion => publicacion.id === parseInt(id));
+
+    if (!publicacionEliminada) {
+        return res.status(404).json({
+            status: 'error',
+            message: 'Publicación no encontrada'
+        });
+    }
 
     res.status(200).json({ message: "Publicación eliminada correctamente" });
+} catch (error) {
+    console.error("Error deleting post:", error);
+    res.status(500).json({
+        status: 'error',
+        message: 'Error al eliminar la publicación'
+    });
+    }
 }

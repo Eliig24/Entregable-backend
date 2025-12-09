@@ -8,6 +8,13 @@ import { token } from 'morgan';
 export const register = async (req, res) => {
     const { name, email, password } = req.body;
 
+    if (!name || !email || !password)
+        return res.status(400).json({ 
+            success: false,
+            message: "Se requiere usuario, nombre y contraseña",
+            error: "INVALID_FORM"
+        });
+
     try {
     const db = getDB();
     const usersCollection = db.collection('users');
