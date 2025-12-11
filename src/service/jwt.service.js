@@ -33,10 +33,49 @@ export const generateRefreshToken = (payload) => {
     );
 }
 
-export const extractTokenFromHeader = (authHeader) => {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return null;
-    }
 
-    return authHeader.split(' ')[1];
+
+export const extractToken = (req) => {
+// Cookies (común: token, authToken, auth_token, accessToken)
+if (req.cookies) {
+    const cookieToken =
+    req.cookies.token || req.cookies.authToken || req.cookies.auth_token || req.cookies.accessToken;
+    if (cookieToken) return cookieToken;
+}
+
+// Signed cookies (para cookie-parser con 'signed: true')
+if (req.signedCookies) {
+    const signed = req.signedCookies.token || req.signedCookies.authToken || req.signedCookies.auth_token || req.cookies.accessToken;
+    if (signed) return signed;
+}
+
+// Authorization header (Bearer <token>)
+const authHeader = req.headers?.authorization || req.get?.('Authorization');
+if (!authHeader) return null;
+if (authHeader.startsWith('Bearer ')) return authHeader.slice(7).trim();
+
+// 3.b) Si te pasaron directamente el token como string
+  if (typeof req === "string") {
+    if (req.startsWith("Bearer ")) return req.slice(7).trim();
+    return null;
+  }
+
+return null;
+}
+
+export const extractRefreshToken = (req) => {
+if (req.cookies) {
+    const cookieToken = req.cookies.refToken || req.cookies.ref_token || req.cookies.refreshToken;
+    if (cookieToken) return cookieToken;
+}
+
+if (req.signedCookies) {
+    const signed = req.signedCookies.refToken || req.signedCookies.ref_token || req.cookies.refreshToken;
+    if (signed) return signed;
+}
+
+if (req.body.refreshToken) {
+   return req.body.refreshToken
+}
+return null;
 }

@@ -2,8 +2,9 @@ import { getDB } from '../db.js';
 import { success } from 'zod';
 import  sendEmail from '../service/email.service.js';
 import bcrypt from 'bcryptjs';
-import { generateAccessToken, generateRefreshToken } from '../service/jwt.service.js';
+import { generateAccessToken, generateRefreshToken, extractRefreshToken } from '../service/jwt.service.js';
 import { token } from 'morgan';
+import jwt from "jsonwebtoken";
 
 export const register = async (req, res) => {
     const { name, email, password } = req.body;
@@ -143,6 +144,22 @@ export const login = async (req, res, next) => {
             updatedAt: user.updatedAt
         };
 
+        // Aquí enviamos el accessToken en una cookie HttpOnly
+        res.cookie('accessToken', accessToken, {
+            httpOnly: true,                  // La cookie no es accesible desde JS
+            secure: process.env.NODE_ENV === 'production',  // Solo en HTTPS
+            sameSite: 'Strict',              // Protege contra CSRF
+            maxAge: 60 * 60 * 1000           // La cookie expira en 1 hora
+        });
+
+        // Aquí enviamos el refreshToken
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,                 
+            secure: process.env.NODE_ENV === 'production', 
+            sameSite: 'Strict',             
+            maxAge: 24 * 60 * 60 * 1000 // La cookie expira en 1 dia
+        });
+
         res.status(200).json({
             success: true,
             message: "Login exitoso",
@@ -164,5 +181,55 @@ export const login = async (req, res, next) => {
             message: "Error del servidor",
             error: "SERVER_ERROR"
         });
-}
+    }
+};
+
+export const refresh = async (req, res) => {
+    try {
+        const refreshToken = extractRefreshToken(req);
+
+        if (!refreshToken) {
+            return res.status(401).json({ ok: false, error: "NO_REFRESH_TOKEN" });
+        }
+
+        const decoded = jwt.verify(
+            refreshToken,
+            process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET
+        );
+
+        const payload = {
+            userId: decoded.userId
+        };
+
+        const newAccessToken = generateAccessToken(payload);
+        const newRefreshToken = generateRefreshToken(payload);
+
+        res.cookie("accessToken", newAccessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "Strict",
+            maxAge: 60 * 60 * 1000, 
+        });
+
+        res.cookie("refreshToken", newRefreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "Strict",
+            maxAge: 24 * 60 * 60 * 1000,
+        });
+
+        return res.status(200).json({
+            ok: true,
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken,
+            userId: payload.userId
+        });
+
+    } catch (error) {
+        console.error("Error refreshing token:", error);
+        return res.status(401).json({
+            ok: false,
+            error: "INVALID_REFRESH_TOKEN"
+        });
+    }
 };
