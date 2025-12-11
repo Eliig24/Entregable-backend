@@ -1,8 +1,6 @@
 import jwt from "jsonwebtoken";
 import { extractToken } from "../service/jwt.service.js";
 
-//TODO: como se si el usuario esta autenticado?
-
 export const requireAuth = async (req, res, next) => {
     try {
         const token = extractToken(req);
